@@ -1,6 +1,6 @@
 use crate::dbengine::btrees::*;
 use std::{collections::HashMap, fmt::Error};
-
+use std::fmt;
 
 fn combine_bytes(high_byte: u8, low_byte: u8) -> u16 {
     // Combine the two bytes into a u16
@@ -48,6 +48,15 @@ impl Value {
         }
     }
 }
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Value::Number(n) => write!(f, "{}", n),
+            Value::String(_, s) => write!(f, "{}", s),
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Slot {
     pub value: Value,
@@ -72,6 +81,12 @@ pub struct KeyRow {
     pub row: Vec<Value>
 }
 
+impl fmt::Display for KeyRow {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: [{}]", self.key, self.row.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(", "))
+    }
+}
+
 impl Page {
     pub fn new_leaf() -> Self {
         Page { page_type: NodeType::Leaf(Vec::new()), free_space_pointer: 4093, slots: Vec::new(), cells: HashMap::new() }
@@ -84,6 +99,20 @@ impl Page {
         self.slots = Vec::new();
         self.cells = HashMap::new();
         self.free_space_pointer = 4095;
+    }
+
+    pub fn vacuum(&mut self) {
+        let mut free_pointer: u16 = 4095;
+        let slots = &mut self.slots;
+        let cells = &self.cells;
+        let mut rows = HashMap::new();
+        for slot in slots {
+            let row = cells.get(&slot.pointer).unwrap();
+            free_pointer -= (row.size + 1) as u16;
+            slot.pointer = free_pointer;
+            rows.insert(slot.pointer, row.clone());
+        };
+        self.cells = rows;
     }
 
     pub fn mut_slot(&mut self, key: Value) -> &mut Slot {
@@ -324,7 +353,5 @@ impl Page {
         return Page { page_type: node_type, free_space_pointer: free_space_pointer, slots: slot_vec, cells: cells}
     }
 }
-
-
 
 

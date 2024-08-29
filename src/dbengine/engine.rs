@@ -1,13 +1,15 @@
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write, Seek, SeekFrom, IoSliceMut};
-use std::os::unix::prelude::FileExt;
-
+use std::fmt;
 // use crate::dbengine::btrees::*;
 use crate::dbengine::pages::Page;
 
 
 #[derive(Debug, Clone)]
 pub struct Table {
+    pub name: String,
+    pub pk_column: u8,
+    // Column number is actually the end of the column bytes so sorry for the naming I was confussed too.
     pub column_number: u8,
     pub column_names: Vec<String>,
     pub column_types: Vec<u8>,
@@ -15,6 +17,17 @@ pub struct Table {
     pub root_node_offset: u32,
     pub free_page_num: u32,
     pub free_page_list: Vec<u32>
+}
+
+impl fmt::Display for Table {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Table: {}", self.name)?;
+        writeln!(f, "Columns:")?;
+        for (name, col_type) in self.column_names.iter().zip(self.column_types.iter()) {
+            write!(f, "  - {} (type: {})", name, col_type)?;
+        }
+        Ok(())
+    }
 }
 
 impl Table {
@@ -39,13 +52,14 @@ impl Table {
          println!("\nRoot Node Offset: {}", self.root_node_offset);
          println!("Free Page Num: {}", self.free_page_num);
          println!("Free Page List: {:?}", self.free_page_list);
+         println!("Primary Key Column Index: {}", self.pk_column);
     }
-    pub fn new(field_names: Vec<String>, field_types: Vec<u8>) -> Self {
+    pub fn new(table_name: &str,pk_index: u8, field_names: Vec<String>, field_types: Vec<u8>) -> Self {
         let mut file = OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)  // This will create the file if it doesn't exist
-        .open("test.db").unwrap();
+        .open(format!("{}{}{}", "PlanckDB/", table_name, ".db")).unwrap();
         
         // file.write_all(header.as_bytes()).unwrap();
         let root_node_offset: u32 = 0;
@@ -55,8 +69,9 @@ impl Table {
         let mut cursor = 32;
         file.seek(SeekFrom::Start(cursor)).unwrap(); // Assuming header is 32 bytes
         file.write_all(&[11 as u8]).unwrap();
+        file.write_all(&[pk_index]).unwrap();
         file.write_all(&[field_types.len() as u8]).unwrap();
-        cursor += 2;
+        cursor += 3;
         let mut end_size = 0;
         let mut i = 0;
         for field in &field_names {
@@ -80,7 +95,7 @@ impl Table {
             file.write_all(&page.to_be_bytes()).unwrap();
         }
         
-        let mut table = Table {column_number: end_size, column_names: field_names, column_types: field_types, page_id_count: page_id_count, root_node_offset: root_node_offset, free_page_num: free_page_num, free_page_list: free_page_list };
+        let mut table = Table {name: table_name.to_string(), pk_column: pk_index,column_number: end_size, column_names: field_names, column_types: field_types, page_id_count: page_id_count, root_node_offset: root_node_offset, free_page_num: free_page_num, free_page_list: free_page_list };
         table.create_page(Page::new_leaf().page_to_buff().unwrap());
         table
     }
@@ -90,7 +105,7 @@ impl Table {
         .read(true)
         .write(true)
         .create(true)  // This will create the file if it doesn't exist
-        .open("test.db").unwrap();
+        .open(format!("{}{}{}", "PlanckDB/", self.name, ".db")).unwrap();
         
         // file.write_all(header.as_bytes()).unwrap();
         let root_node_offset: u32 = self.root_node_offset;
@@ -99,11 +114,13 @@ impl Table {
         let page_id_count: u32 = self.page_id_count;
         let field_names = self.column_names.clone();
         let field_types = self.column_types.clone();
+        let pk_index = self.pk_column;
         let mut cursor = 32;
         file.seek(SeekFrom::Start(cursor)).unwrap(); // Assuming header is 32 bytes
         file.write_all(&[11 as u8]).unwrap();
+        file.write_all(&[pk_index]).unwrap();
         file.write_all(&[field_types.len() as u8]).unwrap();
-        cursor += 2;
+        cursor += 3;
         let mut end_size = 0;
         let mut i = 0;
         for field in &field_names {
@@ -128,12 +145,14 @@ impl Table {
         }
     }
     
-    pub fn read_table() -> Table {
+    pub fn read_table(table_name: &str) -> Table {
         let mut file = OpenOptions::new()
         .read(true)
-        .write(false) // This will create the file if it doesn't exist
-        .open("test.db").unwrap();
+        .write(false) 
+        .open(format!("{}{}{}", "PlanckDB/", table_name, ".db")).unwrap();
+
         let mut column_number: u8;
+        let mut pk_index: u8 ;
         let mut column_names: Vec<String>= Vec::new();
         let mut column_types: Vec<u8>  = Vec::new();
         let mut page_id_count: u32;
@@ -146,6 +165,8 @@ impl Table {
         let mut temp1: [u8; 1] = [0;1];
         file.read(&mut temp1).unwrap();
         column_number = temp1[0];
+        file.read(&mut temp1).unwrap();
+        pk_index = temp1[0];
         file.read(&mut temp1).unwrap();
         let len = temp1[0];
         for ix in 0..len {
@@ -168,7 +189,7 @@ impl Table {
             free_page_list.push(u32::from_be_bytes(temp4));
         }
 
-        Table {column_number: column_number, column_names: column_names, column_types: column_types, page_id_count: page_id_count, root_node_offset: root_node_offset, free_page_num: free_page_num, free_page_list: free_page_list }
+        Table {name: table_name.to_string(),pk_column: pk_index,column_number: column_number, column_names: column_names, column_types: column_types, page_id_count: page_id_count, root_node_offset: root_node_offset, free_page_num: free_page_num, free_page_list: free_page_list }
     }   
 
 
@@ -178,7 +199,7 @@ impl Table {
         .read(true)
         .write(true)
         .create(false)  // This will create the file if it doesn't exist
-        .open("test.db").unwrap();
+        .open(format!("{}{}{}", "PlanckDB/", self.name, ".db")).unwrap();
         let header_end = (47 + self.column_number as u32 + 100 * 4) as u64;
         let page_id_new = self.page_id_count;
         if self.free_page_list.len() != 0 {
@@ -191,9 +212,10 @@ impl Table {
             file.seek(SeekFrom::Start(header_end + page_id_new as u64 * 4096)).unwrap();
             file.write_all(&buffer).unwrap(); 
             self.page_id_count += 1;
+            self.update_table();
             return page_id_new;
         }
-
+       
     }
 
     pub fn update_page(&self, buffer: [u8;4096], page_id: u32){
@@ -202,7 +224,7 @@ impl Table {
         .read(true)
         .write(true)
         .create(false)  // This will create the file if it doesn't exist
-        .open("test.db").unwrap();
+        .open(format!("{}{}{}", "PlanckDB/", self.name, ".db")).unwrap();
         let header_end = (47 + self.column_number as u32 + 100 * 4) as u64;
         
         file.seek(SeekFrom::Start(header_end + page_id as u64 * 4096)).unwrap();
@@ -214,7 +236,7 @@ impl Table {
         let mut file = OpenOptions::new()
         .read(true)
         .write(false) // This will create the file if it doesn't exist
-        .open("test.db").unwrap();
+        .open(format!("{}{}{}", "PlanckDB/", self.name, ".db")).unwrap();
         let header_end = (47 + self.column_number as u32 + 100 * 4) as u64;
         let mut buffer: [u8;4096] = [0; 4096];
         file.seek(SeekFrom::Start(header_end + page_id as u64 * 4096)).unwrap();
@@ -234,4 +256,6 @@ impl Table {
         self.update_table();
     }
 }
+
+
 

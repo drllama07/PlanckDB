@@ -1,12 +1,10 @@
-use std::cmp::min;
-use std::collections::hash_map;
 use std::{collections::HashMap, u32};
 use std::mem;
 
 
 use crate::dbengine::buffer_manager::*;
 use crate::dbengine::pages::*;
-use crate::Table;
+use crate::dbengine::engine::Table;
 #[derive(Clone, Debug)]
 pub enum  NodeType {
     Internal(Vec<u32>),
@@ -28,7 +26,7 @@ pub struct Siblings {
 
 #[derive(Clone, Debug)]
 pub struct BPlusTree {
-    buffer_pool: BufferPool,
+    pub buffer_pool: BufferPool,
 }
 
 impl BPlusTree {
@@ -70,7 +68,7 @@ impl BPlusTree {
     
     pub fn search(&mut self, k: &Value) -> (u32, u32){
         let root = self.buffer_pool.get(0).clone();
-        self.search_tree(root, k, None, None)
+        self.search_tree(root, k, Some(0), Some(0))
     }
     fn search_tree(&mut self, node:Page, key: &Value, leaf_id: Option<u32>,parent_id: Option<u32>) -> (u32, u32){
        match node.page_type {
@@ -161,7 +159,7 @@ impl BPlusTree {
             _ => false,
         }
     }
-    
+
     pub fn update(&mut self, new_kr: KeyRow) {
         let (node_id, _) = self.search(&new_kr.key);
         let node = self.buffer_pool.get_mut(node_id);
@@ -214,7 +212,6 @@ impl BPlusTree {
         }
         let next_node_id = &root.cells.get(&next_node_pointer).unwrap().values[0];
         self.insert_recursive(new_kr, next_node_id.extract_pointer(), &mut parents);
-       
         while parents.len() > 1 {
             let node_id = parents.pop().unwrap();
             if self.is_overflow(self.buffer_pool.clone().get(node_id)) {
@@ -276,7 +273,6 @@ impl BPlusTree {
     }
     
     fn split(&mut self, current: u32, parent: u32) -> bool {
-        
         let node = self.buffer_pool.get(current);
         let mut new_kr: Vec<KeyRow> = Vec::new();
         let mut is_internal = false;
@@ -295,7 +291,6 @@ impl BPlusTree {
             }
           }
         };
-
         let middle_index = new_kr.len() / 2;
 
         let mut new_node_vec: Vec<KeyRow> = Vec::new();
@@ -422,6 +417,7 @@ impl BPlusTree {
                     if key == slots[i].value {
                        let slot = slots.remove(i);
                        node.cells.remove(&slot.pointer);
+                       node.vacuum();
                        parents.push(current); 
                        exists= true;
                        break;
