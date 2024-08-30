@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="YOUR_REPO_LINK_HERE"><img src="https://github.com/drllama07/MKA_Programming_language/blob/master/MKA.png" alt="YOUR_APP_NAME" width="200"></a>
+  <a href="YOUR_REPO_LINK_HERE"><img src="https://github.com/drllama07/PlanckDB/blob/main/PLanck%20db.png" alt="YOUR_APP_NAME" width="200"></a>
   <br>
   Planck DB 
   <br>
