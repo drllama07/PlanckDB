@@ -8,7 +8,7 @@
 
 <h4 align="center"></h4>
 <p align="center">
-  <a href="#what-is-mka-?">How</a> •
+  <a href="#planck-db-?">How</a> •
   <a href="#installation">Installation</a> •
   <a href="#starter-guide">Starter Guide</a> •
   <a href="#code-guide">Code Guide</a> •
@@ -36,13 +36,15 @@ Planck DB is a disk-persistent key-value store and toy database, designed for le
 > Even if it is designed for learning purposes, my code might not be optimal or sufficient, especially considering my level of experience. Take this code with a grain of salt and be aware of the lack of thorough testing and optimization. I appreciate any feedback for improvement.
 
 ## How could someone make use out of this code ?
-> If you want to learn more about databases, I'll share the learning resources I've used and some of my experiences in the[Learning Resources](README.md/credits-and-learning-resources) section.
+> If you want to learn more about databases, I'll share the learning resources I've used and some of my experiences in the [Learning Resources](README.md/credits-and-learning-resources) section.
 
 > If you design small project and need a simple persistent storage. You can leverage and if possible adjust Planck DB for your needs.
 
 > Or just as a starting point for your own database implementation.
 
 # Installation
+
+***WARNING:*** For some reason, my folder containing the client code has become corrupted, and I am now unable to upload it. However, with some modifications, the client.rs file should still be able to handle the job. I sincerely apologize for any inconvenience this may cause. If you send me a request for the client code I will try my best to provide it to you.
 
 1. Download the repository.
 
@@ -63,7 +65,7 @@ cargo build
 4. You must do this for both `/client` and the main code.
 
 
-# For more information on how to use PLanck DB and for more implementation details:
+# For more information on how to use Planck DB and for more implementation details:
 ->  [PlanckDB-Documentation](documentation.md)
 
 # Projects ideas for testing Planck DB
