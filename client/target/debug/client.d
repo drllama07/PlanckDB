@@ -1,1 +1,0 @@
-/Users/yusufyilmaz/Desktop/Rust/MICRO_DB/client\ for\ test/client/target/debug/client: /Users/yusufyilmaz/Desktop/Rust/MICRO_DB/client\ for\ test/client/src/main.rs /Users/yusufyilmaz/Desktop/Rust/MICRO_DB/client\ for\ test/client/src/protocols.rs
